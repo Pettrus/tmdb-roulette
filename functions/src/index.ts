@@ -1,94 +1,103 @@
-//import * as functions from "firebase-functions";
-//import { Genre } from './movies/movie-types';
-//import { getMoviesRoulette } from './movies/movies';
+import * as functions from "firebase-functions";
+import { Genre } from "./movies/movie-types";
+import { getMoviesRoulette } from "./movies/movies";
+
+const fs = require("fs");
+const path = require("path");
+
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    port: 465,
-    auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD
-    },
-    logger: true,
-    debug: true,
-    secure: true,
-    secureConnection: false,
-    tls:{
-        rejectUnAuthorized:true
-    }
+  service: "gmail",
+  port: 465,
+  auth: {
+    user: process.env.EMAIL_USERNAME,
+    pass: process.env.EMAIL_PASSWORD,
+  },
+  logger: true,
+  debug: true,
+  secure: true,
+  secureConnection: false,
+  tls: {
+    rejectUnAuthorized: true,
+  },
 });
 
-const teste = async () => {
-    console.log('enviar email')
+const getMoviesHtml = async () => {
+  const moviesGenre = [
+    Genre.Adventure,
+    Genre.Fantasy,
+    Genre.SciFi,
+    Genre.Mystery,
+  ];
+
+  const moviesByGenre = await getMoviesRoulette(moviesGenre);
+  const moviesHtml = moviesByGenre
+    .map((movieByGenre) => {
+      return `
+        <h2>${movieByGenre.genre}</h2>
+        <table width="600" cellpadding="0" cellspacing="0" border="0" class="container">
+            <tr>                
+                ${movieByGenre.list
+                  .map((movie: any) => {
+                    const url = encodeURI(
+                      "https://www.youtube.com/results?search_query=" +
+                        movie.title
+                    );
+
+                    return `
+                        <td width="200" class="mobile" style="font-size:12px; line-height:18px;">
+                            <div style="text-align: center">
+                                <a href="${url}" target="_blank">
+                                    <img src="https://image.tmdb.org/t/p/original/${movie.poster_path}" style="width:100px;height:150px;object-fit: cover;" />
+                                </a>
+                                <p style="text-align: center;">${movie.title}</p>
+                            </div>
+                        </td>
+                    `;
+                  })
+                  .join("")}
+            </tr>
+        </table>
+    `;
+    })
+    .join("");
+
+  return moviesHtml;
+};
+
+export const helloWorld = functions.https.onRequest((request, response) => {
+  functions.logger.info("Hello logs!", { structuredData: true });
+  response.send("Hello from Firebase!");
+});
+
+export const sortMovies = functions.pubsub
+  .schedule("0 18 * * *")
+  .timeZone("Europe/Lisbon")
+  .onRun(async (ctx: any) => {
+    const htmlTemplate = fs.readFileSync(
+      path.resolve(__dirname, "email/template.html"),
+      "utf8"
+    );
+    const moviesHtml = getMoviesHtml();
+    const htmlEmail = htmlTemplate.replace("#REPLACE#", moviesHtml);
+
     const mailOptions = {
-        from: 'oracle.bot1@gmail.com', // Something like: Jane Doe <janedoe@gmail.com>
-        to: 'pettrus.sherlock@gmail.com',
-        subject: 'Hello from firebase', // email subject
-        html: 'EMAIL SIMPLES'
+      from: process.env.EMAIL_USERNAME,
+      to: ["pettrus.sherlock@gmail.com", "ilanavsbnu@gmail.com"],
+      subject: "Today's movie roulette :)",
+      html: htmlEmail,
     };
 
-    console.log('agora vai')
-
-    transporter.sendMail(mailOptions, function(error: any, info: any){
-        if (error) {
-          console.log(error);
-        } else {
-          console.log('Email sent: ' + info.response);
-        }
-      });
-
-    console.log('enviou')
-
-    // returning result
-    /*return transporter.sendMail(mailOptions, (erro: any, info: any) => {
-        if(erro){
-            console.log('erro')
-        }
-
-        console.log('eniado')
-    });*/
-}
-
-teste()
-
-// // Start writing Firebase Functions
-// // https://firebase.google.com/docs/functions/typescript
-//
-//export const helloWorld = functions.https.onRequest((request, response) => {
-    /*const mailOptions = {
-        from: 'orable.bot1@gmail.com', // Something like: Jane Doe <janedoe@gmail.com>
-        to: 'pettrus.sherlock@gmail.com',
-        subject: 'Hello from firebase', // email subject
-        html: `<p style="font-size: 16px;">test it!!</p>
-            <br />
-        ` // email content in HTML
-    };
-
-    // returning result
-    return transporter.sendMail(mailOptions, (erro: any, info: any) => {
-        if(erro){
-            return res.send(erro.toString());
-        }
-        return res.send('Sended');
-    });*/
-
-    //functions.logger.info("Hello logs!", {structuredData: true});
-    //response.send("Hello from Firebase!");
-//});
-
-/*exports.sortMovies = functions
-  .pubsub.schedule('0 18 * * *')
-  .timeZone('Europe/Lisbon')
-  .onRun(async (ctx) => {
-    console.log('This will run M-F at 10:00 AM Eastern!');
-
-    const moviesGenre = [
-        Genre.Adventure,
-        Genre.Fantasy,
-        Genre.SciFi,
-        Genre.Mystery
-    ];
-
-    const movies = await getMoviesRoulette(moviesGenre);
-});*/
+    transporter.sendMail(mailOptions, function (error: any, info: any) {
+      if (error) {
+        console.log(error);
+        functions.logger.error(error, { structuredData: true });
+      } else {
+        console.log("Email sent: " + info.response);
+        functions.logger.info("Email sent: " + info.response, {
+          structuredData: true,
+        });
+      }
+    });
+  });

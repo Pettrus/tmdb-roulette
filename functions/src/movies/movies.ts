@@ -4,49 +4,51 @@ import { Genre } from './movie-types';
 const mdb = new MovieDB(process.env.TMDB_KEY);
 
 const randomNumber = (min: number, max: number) => {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
 
 const generateRandomArrayPositions = () => {
-    const positions: number[] = [];
+  const positions: number[] = [];
 
-    while (positions.length < 3) {
-        const number = randomNumber(1, 20);
+  while (positions.length < 3) {
+    const number = randomNumber(1, 20);
 
-        if (!positions.includes(number)) {
-            positions.push(number);
-        }
+    if (!positions.includes(number)) {
+      positions.push(number);
     }
+  }
 
-    return positions;
-}
+  return positions;
+};
 
 const getMoviesByGenre = async (genre: Genre) => {
-    const randomPage = randomNumber(1, 80);
-    const randomPositionOfResults = generateRandomArrayPositions();
+  const randomPage = randomNumber(1, 80);
+  const randomPositionOfResults = generateRandomArrayPositions();
 
-    const options = {
-        query: {
-            'language': 'en-US',
-            //'sort_by': 'popularity.desc',
-            'release_date.gte': '2005-01-01',
-            'include_adult': false,
-            'with_genres': genre.toString(),
-            'page': randomPage
-        }
-    };
+  const options = {
+    query: {
+      language: "en-US",
+      //'sort_by': 'popularity.desc',
+      "release_date.gte": "2005-01-01",
+      include_adult: false,
+      with_genres: genre.toString(),
+      page: randomPage,
+    },
+  };
 
-    const result = await mdb.discover.movie(options);
-    const selectedMovies = await result?.data?.results
-        .filter((_: any, index: number) => randomPositionOfResults.includes(index));
+  const result = await mdb.discover.movie(options);
+  const selectedMovies = await result?.data?.results.filter(
+    (_: any, index: number) => randomPositionOfResults.includes(index)
+  );
 
-    return selectedMovies;
+  return selectedMovies;
 };
 
 export const getMoviesRoulette = async (genres: Genre[]) => {
-    return await Promise.all(
-        genres.map(async (genreId) => ({
-            [Genre[genreId]]: await getMoviesByGenre(genreId)
-        }))
-    );
-}
+  return await Promise.all(
+    genres.map(async (genreId) => ({
+      genre: Genre[genreId],
+      list: await getMoviesByGenre(genreId),
+    }))
+  );
+};
