@@ -1,9 +1,7 @@
 import * as functions from "firebase-functions";
 import { Genre } from "./movies/movie-types";
 import { getMoviesRoulette } from "./movies/movies";
-
-const fs = require("fs");
-const path = require("path");
+import { emailTemplate } from "./email/template";
 
 const nodemailer = require("nodemailer");
 
@@ -41,8 +39,7 @@ const getMoviesHtml = async () => {
                 ${movieByGenre.list
                   .map((movie: any) => {
                     const url = encodeURI(
-                      "https://www.youtube.com/results?search_query=" +
-                        movie.title
+                      `https://www.youtube.com/results?search_query=${movie.title} trailer`
                     );
 
                     return `
@@ -66,20 +63,17 @@ const getMoviesHtml = async () => {
   return moviesHtml;
 };
 
-export const helloWorld = functions.https.onRequest((request, response) => {
+/*export const helloWorld = functions.https.onRequest((request, response) => {
   functions.logger.info("Hello logs!", { structuredData: true });
   response.send("Hello from Firebase!");
-});
+});*/
 
 export const sortMovies = functions.pubsub
-  .schedule("0 18 * * *")
+  .schedule("0 18 * * 0-6")
   .timeZone("Europe/Lisbon")
   .onRun(async (ctx: any) => {
-    const htmlTemplate = fs.readFileSync(
-      path.resolve(__dirname, "email/template.html"),
-      "utf8"
-    );
-    const moviesHtml = getMoviesHtml();
+    const htmlTemplate = emailTemplate;
+    const moviesHtml = await getMoviesHtml();
     const htmlEmail = htmlTemplate.replace("#REPLACE#", moviesHtml);
 
     const mailOptions = {
