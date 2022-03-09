@@ -1,4 +1,3 @@
-import * as functions from "firebase-functions";
 import { Genre } from "./movies/movie-types";
 import { getMoviesRoulette } from "./movies/movies";
 import { emailTemplate } from "./email/template";
@@ -63,35 +62,25 @@ const getMoviesHtml = async () => {
   return moviesHtml;
 };
 
-/*export const helloWorld = functions.https.onRequest((request, response) => {
-  functions.logger.info("Hello logs!", { structuredData: true });
-  response.send("Hello from Firebase!");
-});*/
+const sortMovies = async () => {
+  const htmlTemplate = emailTemplate;
+  const moviesHtml = await getMoviesHtml();
+  const htmlEmail = htmlTemplate.replace("#REPLACE#", moviesHtml);
 
-export const sortMovies = functions.pubsub
-  .schedule("0 18 * * 0-6")
-  .timeZone("Europe/Lisbon")
-  .onRun(async (ctx: any) => {
-    const htmlTemplate = emailTemplate;
-    const moviesHtml = await getMoviesHtml();
-    const htmlEmail = htmlTemplate.replace("#REPLACE#", moviesHtml);
+  const mailOptions = {
+    from: process.env.EMAIL_USERNAME,
+    to: ["pettrus.sherlock@gmail.com", "ilanavsbnu@gmail.com"],
+    subject: "Today's movie roulette :)",
+    html: htmlEmail,
+  };
 
-    const mailOptions = {
-      from: process.env.EMAIL_USERNAME,
-      to: ["pettrus.sherlock@gmail.com", "ilanavsbnu@gmail.com"],
-      subject: "Today's movie roulette :)",
-      html: htmlEmail,
-    };
-
-    transporter.sendMail(mailOptions, function (error: any, info: any) {
-      if (error) {
-        console.log(error);
-        functions.logger.error(error, { structuredData: true });
-      } else {
-        console.log("Email sent: " + info.response);
-        functions.logger.info("Email sent: " + info.response, {
-          structuredData: true,
-        });
-      }
-    });
+  transporter.sendMail(mailOptions, function (error: any, info: any) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
   });
+}
+
+sortMovies()

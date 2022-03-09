@@ -24,12 +24,13 @@ const generateRandomArrayPositions = () => {
 const getMoviesByGenre = async (genre: Genre) => {
   const randomPage = randomNumber(1, 80);
   const randomPositionOfResults = generateRandomArrayPositions();
+  const datetime = new Date();
 
   const options = {
     query: {
       language: "en-US",
-      //'sort_by': 'popularity.desc',
       "release_date.gte": "2005-01-01",
+      "release_date.lte": datetime.toISOString().slice(0,10),
       include_adult: false,
       with_genres: genre.toString(),
       page: randomPage,
